@@ -6,7 +6,12 @@ class SubmitPunchUseCase {
   final PunchRepository repository;
   SubmitPunchUseCase(this.repository);
 
-  Future<PunchEntity> call(String empCode, String password, XFile image) {
-    return repository.submitPunch(empCode, password, image);
+  Future<dynamic> postApi({
+    required String p_flag,
+    required String p_pageval,
+    required String p_paraval,
+  }) {
+    return repository.postApi(
+        p_flag: p_flag, p_pageval: p_pageval, p_paraval: p_paraval);
   }
 }

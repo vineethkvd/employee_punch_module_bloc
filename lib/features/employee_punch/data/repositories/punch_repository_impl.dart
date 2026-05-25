@@ -8,7 +8,12 @@ class PunchRepositoryImpl implements PunchRepository {
   PunchRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<PunchEntity> submitPunch(String empCode, String password, XFile image) async {
-    return await remoteDataSource.submitPunch(empCode, password, image);
+  Future<dynamic> postApi({
+    required String p_flag,
+    required String p_pageval,
+    required String p_paraval,
+  }) async {
+    return await remoteDataSource.postApi(
+        p_flag: p_flag, p_pageval: p_pageval, p_paraval: p_paraval);
   }
 }

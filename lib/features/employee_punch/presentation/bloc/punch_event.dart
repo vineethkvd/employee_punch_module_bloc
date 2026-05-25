@@ -8,10 +8,15 @@ abstract class PunchEvent extends Equatable {
 class SubmitPunchEvent extends PunchEvent {
   final String empCode;
   final String password;
-  final XFile image;
+  final String image;
 
-  SubmitPunchEvent({required this.empCode, required this.password, required this.image});
+  SubmitPunchEvent({
+    required this.empCode,
+    required this.password,
+    required this.image,
+  });
 
   @override
-  List<Object?> get props => [empCode, password, image.path];
+
+  List<Object?> get props => [empCode, password, image];
 }

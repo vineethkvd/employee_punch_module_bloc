@@ -2,7 +2,7 @@ part of 'punch_bloc.dart';
 
 sealed class PunchState extends Equatable {
   const PunchState();
-  
+
   @override
   List<Object?> get props => [];
 }
