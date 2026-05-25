@@ -7,10 +7,10 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: '/',
+  initialLocation: '/punch',
   routes: [
     GoRoute(
-      path: '/',
+      path: '/admin',
       builder: (context, state) => const AdminLoginScreen(),
     ),
     GoRoute(
