@@ -11,6 +11,16 @@ import '../../../../injection_container.dart';
 import '../../../../main.dart';
 import '../bloc/punch_bloc.dart';
 
+const _primary = Color(0xFF062B78);
+const _primaryLight = Color(0xFFEFF6FF);
+const _primaryBorder = Color(0xFFBFDBFE);
+const _surface = Colors.white;
+const _background = Color(0xFFF1F5F9);
+const _borderColor = Color(0xFFE2E8F0);
+const _textPrimary = Color(0xFF0F172A);
+const _textSecondary = Color(0xFF64748B);
+const _errorColor = Color(0xFFDC2626);
+
 class PunchScreen extends StatelessWidget {
   const PunchScreen({super.key});
 
@@ -18,35 +28,32 @@ class PunchScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<PunchBloc>(),
-      child: const ModernPunchMainContent(),
+      child: const _PunchView(),
     );
   }
 }
 
-class ModernPunchMainContent extends StatefulWidget {
-  const ModernPunchMainContent({super.key});
+class _PunchView extends StatefulWidget {
+  const _PunchView();
+
   @override
-  State<ModernPunchMainContent> createState() => _ModernPunchMainContentState();
+  State<_PunchView> createState() => _PunchViewState();
 }
 
-class _ModernPunchMainContentState extends State<ModernPunchMainContent> {
-  final _empCodeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _clientCodeController = TextEditingController();
+class _PunchViewState extends State<_PunchView> {
+  final _empCodeCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _clientCodeCtrl = TextEditingController();
 
-  final FocusNode _empCodeFocusNode = FocusNode();
-  final FocusNode _passwordFocusNode = FocusNode();
-  final FocusNode _submitFocusNode = FocusNode();
-  final FocusNode _clearFocusNode = FocusNode();
-  final FocusNode _clientCodeFocusNode = FocusNode();
+  final _empCodeFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _submitFocus = FocusNode();
+  final _clearFocus = FocusNode();
+  final _clientCodeFocus = FocusNode();
 
-  CameraController? _cameraController;
-  bool _isCameraReady = false;
-  bool _isServerConfigured = false;
-
-  static const _primaryThemeColor = Color(0xFF1C2955);
-  static const _backgroundGrey = Color(0xFFF4F6F7);
-  static const _buttonColor = Color(0xFF2563EB);
+  CameraController? _camera;
+  bool _cameraReady = false;
+  bool _serverConfigured = false;
 
   @override
   void initState() {
@@ -56,112 +63,110 @@ class _ModernPunchMainContentState extends State<ModernPunchMainContent> {
 
   Future<void> _initCamera() async {
     if (cameras.isEmpty) return;
-    final camera = cameras.firstWhere(
+    final cam = cameras.firstWhere(
           (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => cameras.first,
     );
-
-    _cameraController = CameraController(camera, ResolutionPreset.medium, enableAudio: false);
-    await _cameraController!.initialize();
-    if (mounted) setState(() => _isCameraReady = true);
+    _camera = CameraController(cam, ResolutionPreset.medium, enableAudio: false);
+    await _camera!.initialize();
+    if (mounted) setState(() => _cameraReady = true);
   }
 
   @override
   void dispose() {
-    _cameraController?.dispose();
-    _empCodeController.dispose();
-    _passwordController.dispose();
-    _clientCodeController.dispose();
-    _empCodeFocusNode.dispose();
-    _passwordFocusNode.dispose();
-    _submitFocusNode.dispose();
-    _clearFocusNode.dispose();
-    _clientCodeFocusNode.dispose();
+    _camera?.dispose();
+    _empCodeCtrl.dispose();
+    _passwordCtrl.dispose();
+    _clientCodeCtrl.dispose();
+    _empCodeFocus.dispose();
+    _passwordFocus.dispose();
+    _submitFocus.dispose();
+    _clearFocus.dispose();
+    _clientCodeFocus.dispose();
     super.dispose();
   }
 
-  void _showModernResultDialog(String message, bool isError) {
+  void _showResultDialog(String message, bool isError) {
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text(
-            isError ? 'Alert' : 'Success',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: isError ? Colors.red.shade700 : _primaryThemeColor,
+      builder: (_) => AlertDialog(
+        backgroundColor: _surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+
+        title: Text(
+          isError ? 'Alert' : 'Success',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: _textPrimary,
+          ),
+        ),
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            color: _textSecondary,
+            height: 1.5,
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          FilledButton(
+            autofocus: true,
+            style: FilledButton.styleFrom(
+              backgroundColor: isError ? _errorColor : _primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              _empCodeFocus.requestFocus();
+            },
+            child: Text(
+              'OK',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
             ),
           ),
-          content: Text(
-            message,
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              autofocus: true,
-              style: TextButton.styleFrom(
-                foregroundColor: isError ? Colors.red.shade700 : _primaryThemeColor,
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-                _empCodeFocusNode.requestFocus();
-              },
-              child: Text(
-                'Ok',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            )
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 
   void _submitPunch() async {
-    if (!_isCameraReady || _cameraController == null) {
-      _showModernResultDialog('Camera not initialized.', true);
+    if (!_cameraReady || _camera == null) {
+      _showResultDialog('Camera not initialised.', true);
       return;
     }
-
-    if (_empCodeController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showModernResultDialog('Please enter credentials.', true);
+    if (_empCodeCtrl.text.isEmpty || _passwordCtrl.text.isEmpty) {
+      _showResultDialog('Please enter your credentials.', true);
       return;
     }
-
     try {
-      final imageFile = await _cameraController!.takePicture();
-      final bytes = await imageFile.readAsBytes();
-      final base64Image = base64Encode(bytes);
-
+      final file = await _camera!.takePicture();
+      final bytes = await file.readAsBytes();
+      final b64 = base64Encode(bytes);
       if (mounted) {
-        context.read<PunchBloc>().add(
-            SubmitPunchEvent(
-              empCode: _empCodeController.text,
-              password: _passwordController.text,
-              image: base64Image,
-            )
-        );
+        context.read<PunchBloc>().add(SubmitPunchEvent(
+          empCode: _empCodeCtrl.text,
+          password: _passwordCtrl.text,
+          image: b64,
+        ));
       }
     } catch (e) {
-      _showModernResultDialog('Camera error: $e', true);
+      _showResultDialog('Camera error: $e', true);
     }
   }
 
   void _connectToServer() {
-    if (_clientCodeController.text.isNotEmpty) {
-      setState(() {
-        _isServerConfigured = true;
-      });
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _empCodeFocusNode.requestFocus();
-      });
-    }
-  }
-
-  void _goToAdminLogin() {
-    context.go('/admin');
+    if (_clientCodeCtrl.text.trim().isEmpty) return;
+    setState(() => _serverConfigured = true);
+    Future.delayed(
+      const Duration(milliseconds: 120),
+          () => _empCodeFocus.requestFocus(),
+    );
   }
 
   @override
@@ -169,142 +174,26 @@ class _ModernPunchMainContentState extends State<ModernPunchMainContent> {
     return BlocConsumer<PunchBloc, PunchState>(
       listener: (context, state) {
         if (state is PunchFailure) {
-          _showModernResultDialog(state.message, true);
+          _showResultDialog(state.message, true);
         } else if (state is PunchSuccess) {
-          _showModernResultDialog(state.result.message, false);
-          _empCodeController.clear();
-          _passwordController.clear();
+          _showResultDialog(state.result.message, false);
+          _empCodeCtrl.clear();
+          _passwordCtrl.clear();
         }
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: _backgroundGrey,
+          backgroundColor: _background,
           body: Stack(
             children: [
               Column(
                 children: [
-                  _buildModernHeader(),
-                  Expanded(child: _buildModernBody(state)),
-                  _buildModernFooter(),
+                  _buildHeader(),
+                  Expanded(child: _buildBody(state)),
+                  _buildFooter(),
                 ],
               ),
-              if (!_isServerConfigured)
-                Container(
-                  color: Colors.black.withOpacity(0.6),
-                  child: Center(
-                    child: Container(
-                      width: 450,
-                      padding: const EdgeInsets.all(40),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 30,
-                            offset: Offset(0, 15),
-                          )
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.blue.shade100, width: 2),
-                            ),
-                            child: const Icon(Icons.code, color: _buttonColor, size: 32),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            'Server Configuration',
-                            style: GoogleFonts.poppins(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Enter your client code to connect to the server',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Client Code',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _clientCodeController,
-                                focusNode: _clientCodeFocusNode,
-                                onSubmitted: (_) => _connectToServer(),
-                                autofocus: true,
-                                style: GoogleFonts.poppins(fontSize: 14),
-                                decoration: InputDecoration(
-                                  hintText: 'e.g. XYZ',
-                                  hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400),
-                                  prefixIcon: Icon(Icons.dns_outlined, color: Colors.grey.shade500),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(color: _buttonColor, width: 2),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 32),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _buttonColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                elevation: 0,
-                              ),
-                              onPressed: _connectToServer,
-                              child: Text(
-                                'Connect to Server',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              if (!_serverConfigured) _buildServerConfigOverlay(),
             ],
           ),
         );
@@ -312,45 +201,260 @@ class _ModernPunchMainContentState extends State<ModernPunchMainContent> {
     );
   }
 
-  Widget _buildModernHeader() {
-    final now = DateTime.now();
+  Widget _buildHeader() {
     return Container(
-      color: _primaryThemeColor,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      color: _primary,
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            DateFormat('dd-MMM-yyyy').format(now),
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 12),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  DateFormat('dd MMM yyyy').format(DateTime.now()),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           ),
           Column(
             children: [
               Text(
                 'CAROL SOLUTIONS',
-                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 1.5,
+                ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
-                '1st Floor, Thapasya Building, 1, Infopark Campus, Infopark Phase, Kakkanad, Kerala 682042',
-                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10),
+                '1st Floor, Thapasya Building, Infopark Campus, Kakkanad, Kerala 682042',
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white70,
+                  fontSize: 11,
+                ),
               ),
             ],
           ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StreamBuilder(
+                    stream: Stream.periodic(const Duration(seconds: 1)),
+                    builder: (_, __) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        DateFormat('hh:mm:ss a').format(DateTime.now()),
+                        style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Tooltip(
+                    message: 'Admin Login',
+                    child: InkWell(
+                      onTap: () => context.go('/admin'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.admin_panel_settings_outlined,
+                            color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(PunchState state) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'PUNCHING PORTAL',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: _textPrimary,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Container(
+              width: 860,
+              padding: const EdgeInsets.all(36),
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _borderColor),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A000000),
+                    blurRadius: 20,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 6, child: _buildForm(state)),
+                  const SizedBox(width: 36),
+                  Expanded(flex: 4, child: _buildCameraPanel()),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(PunchState state) {
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          FocusTraversalOrder(
+            order: const NumericFocusOrder(1),
+            child: TextField(
+              controller: _empCodeCtrl,
+              focusNode: _empCodeFocus,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _passwordFocus.requestFocus(),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _textPrimary),
+              decoration: _inputDecoration('Employee Code', Icons.badge_outlined),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FocusTraversalOrder(
+            order: const NumericFocusOrder(2),
+            child: TextField(
+              controller: _passwordCtrl,
+              focusNode: _passwordFocus,
+              obscureText: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) {
+                _submitFocus.requestFocus();
+                if (state is! PunchLoading) _submitPunch();
+              },
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _textPrimary),
+              decoration: _inputDecoration('Password', Icons.lock_outline_rounded),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: _primaryLight,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _primaryBorder),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule_rounded, color: _primary, size: 18),
+                const SizedBox(width: 10),
+                Text(
+                  'Shift: NORMAL-2  ·  09:30 – 18:30',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
           Row(
             children: [
-              StreamBuilder(
-                stream: Stream.periodic(const Duration(seconds: 1)),
-                builder: (context, snapshot) => Text(
-                  DateFormat('hh:mm:ss a').format(DateTime.now()),
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 12),
+              Expanded(
+                child: FocusTraversalOrder(
+                  order: const NumericFocusOrder(3),
+                  child: FilledButton.icon(
+                    focusNode: _submitFocus,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: state is PunchLoading ? null : _submitPunch,
+                    icon: state is PunchLoading
+                        ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                        : const Icon(Icons.fingerprint_rounded, size: 18),
+                    label: Text(
+                      'Submit Punch',
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              IconButton(
-                icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-                tooltip: 'Admin Login',
-                onPressed: _goToAdminLogin,
+              const SizedBox(width: 12),
+              Expanded(
+                child: FocusTraversalOrder(
+                  order: const NumericFocusOrder(4),
+                  child: OutlinedButton.icon(
+                    focusNode: _clearFocus,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: _borderColor, width: 1.5),
+                      foregroundColor: _textSecondary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () {
+                      _empCodeCtrl.clear();
+                      _passwordCtrl.clear();
+                      _empCodeFocus.requestFocus();
+                    },
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(
+                      'Clear / Reject',
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -359,185 +463,185 @@ class _ModernPunchMainContentState extends State<ModernPunchMainContent> {
     );
   }
 
-  Widget _buildModernFooter() {
-    return Container(
-      width: double.infinity,
-      color: _primaryThemeColor,
-      padding: const EdgeInsets.all(10),
-      child: Text(
-        'Designed & Developed by Vineeth Venu',
-        textAlign: TextAlign.center,
-        style: GoogleFonts.poppins(fontWeight: FontWeight.w400, color: Colors.white70, fontSize: 10),
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: _textSecondary),
+      prefixIcon: Icon(icon, color: _primary, size: 20),
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: _borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: _borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: _primary, width: 1.8),
       ),
     );
   }
 
-  Widget _buildModernBody(PunchState state) {
-    return Center(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'PUNCHING PORTAL',
-              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: _primaryThemeColor, letterSpacing: 0.5),
+  Widget _buildCameraPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 260,
+            color: const Color(0xFF0F172A),
+            child: _cameraReady
+                ? CameraPreview(_camera!)
+                : const Center(
+              child: CircularProgressIndicator(color: _primary, strokeWidth: 2),
             ),
-            const SizedBox(height: 20),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             Container(
-              width: 800,
-              padding: const EdgeInsets.all(50),
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 5))],
+                color: _cameraReady ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+                shape: BoxShape.circle,
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: FocusTraversalGroup(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildInputField(
-                            _empCodeController,
-                            'Employee Code',
-                            Icons.badge,
-                            focusNode: _empCodeFocusNode,
-                            onSubmitted: () => _passwordFocusNode.requestFocus(),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildInputField(
-                            _passwordController,
-                            'Password',
-                            Icons.lock_outline,
-                            obscureText: true,
-                            focusNode: _passwordFocusNode,
-                            onSubmitted: () => _submitFocusNode.requestFocus(),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Shift: NORMAL-2 (09:30:00 - 18:30:00)',
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: _primaryThemeColor, fontSize: 12),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          _buildButtons(state),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 30),
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 260,
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.grey.shade200, width: 2),
-                          ),
-                          child: _isCameraReady
-                              ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: CameraPreview(_cameraController!),
-                          )
-                              : const Center(child: CircularProgressIndicator(color: _primaryThemeColor)),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Place your face within the camera frame',
-                          style: GoogleFonts.poppins(color: Colors.black54, fontSize: 10),
-                        )
-                      ],
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _cameraReady ? 'Camera ready' : 'Initialising camera…',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: _textSecondary,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildInputField(
-      TextEditingController controller,
-      String label,
-      IconData icon,
-      {bool obscureText = false,
-        required FocusNode focusNode,
-        required VoidCallback onSubmitted}
-      ) {
-    return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      obscureText: obscureText,
-      textInputAction: TextInputAction.next,
-      onSubmitted: (_) => onSubmitted(),
-      style: GoogleFonts.poppins(fontSize: 13),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: GoogleFonts.poppins(fontSize: 12),
-        prefixIcon: Icon(icon, color: _primaryThemeColor, size: 20),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: _primaryThemeColor, width: 1.5)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-      ),
-    );
-  }
-
-  Widget _buildButtons(PunchState state) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            focusNode: _submitFocusNode,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryThemeColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              elevation: 2,
-            ),
-            onPressed: state is PunchLoading ? null : _submitPunch,
-            child: state is PunchLoading
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Text('SUBMIT PUNCH', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12)),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton(
-            focusNode: _clearFocusNode,
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: _primaryThemeColor),
-              foregroundColor: _primaryThemeColor,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () {
-              _empCodeController.clear();
-              _passwordController.clear();
-              _empCodeFocusNode.requestFocus();
-            },
-            child: Text('CLEAR / REJECT', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12)),
-          ),
-        ),
       ],
+    );
+  }
+
+  Widget _buildServerConfigOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.4),
+      child: Center(
+        child: Container(
+          width: 440,
+          padding: const EdgeInsets.all(40),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _borderColor),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x18000000),
+                blurRadius: 32,
+                offset: Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: _primaryLight,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _primaryBorder),
+                ),
+                child: const Icon(Icons.cloud_sync_outlined, color: _primary, size: 28),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Server Configuration',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: _textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Enter your client code to connect to the server',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: _textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Client Code',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _clientCodeCtrl,
+                focusNode: _clientCodeFocus,
+                autofocus: true,
+                onSubmitted: (_) => _connectToServer(),
+                style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _textPrimary),
+                decoration: _inputDecoration('e.g. XYZ', Icons.dns_outlined),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: _connectToServer,
+                  child: Text(
+                    'Connect to Server',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Container(
+      width: double.infinity,
+      color: _primary,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Text(
+        'Designed & Developed by Vineeth Venu',
+        textAlign: TextAlign.center,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11,
+          color: Colors.white70,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }
