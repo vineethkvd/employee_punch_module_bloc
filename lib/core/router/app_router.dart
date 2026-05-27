@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../features/auth/presentation/pages/admin_login_screen.dart';
 import '../../features/employee_punch/presentation/pages/punch_screen.dart';
+
+import '../../features/home/presentation/pages/admin_dashboard_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -16,6 +19,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/punch',
       builder: (context, state) => const PunchScreen(),
+    ),
+    GoRoute(
+      path: '/admin/dashboard',
+      builder: (context, state) => const AdminDashboardScreen(),
     ),
   ],
 );
