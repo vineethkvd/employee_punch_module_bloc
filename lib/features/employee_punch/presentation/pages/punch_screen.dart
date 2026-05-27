@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,20 +7,19 @@ import 'package:camera/camera.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../../injection_container.dart';
 import '../../../../main.dart';
 import '../bloc/punch_bloc.dart';
 
-const _primary = Color(0xFF062B78);
-const _primaryLight = Color(0xFFEFF6FF);
-const _primaryBorder = Color(0xFFBFDBFE);
-const _surface = Colors.white;
-const _background = Color(0xFFF1F5F9);
-const _borderColor = Color(0xFFE2E8F0);
-const _textPrimary = Color(0xFF0F172A);
-const _textSecondary = Color(0xFF64748B);
-const _errorColor = Color(0xFFDC2626);
+const _bgDark = Color(0xFF030712);
+const _accent1 = Color(0xFF06B6D4);
+const _accent2 = Color(0xFF3B82F6);
+const _accent3 = Color(0xFF8B5CF6);
+const _neonIndicator = Color(0xFF22D3EE);
+const _textWhite = Colors.white;
+const _textMuted = Color(0x60FFFFFF);
+const _glassBg = Color(0x12FFFFFF);
+const _glassBorder = Color(0x1AFFFFFF);
 
 class PunchScreen extends StatelessWidget {
   const PunchScreen({super.key});
@@ -40,25 +40,33 @@ class _PunchView extends StatefulWidget {
   State<_PunchView> createState() => _PunchViewState();
 }
 
-class _PunchViewState extends State<_PunchView> {
+class _PunchViewState extends State<_PunchView> with SingleTickerProviderStateMixin {
   final _empCodeCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _clientCodeCtrl = TextEditingController();
-
   final _empCodeFocus = FocusNode();
   final _passwordFocus = FocusNode();
-  final _submitFocus = FocusNode();
-  final _clearFocus = FocusNode();
   final _clientCodeFocus = FocusNode();
 
   CameraController? _camera;
   bool _cameraReady = false;
   bool _serverConfigured = false;
 
+  late AnimationController _scanAnimController;
+  late Animation<double> _scanAnimation;
+
   @override
   void initState() {
     super.initState();
     _initCamera();
+    _scanAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    )..repeat(reverse: true);
+
+    _scanAnimation = Tween<double>(begin: 0.1, end: 0.85).animate(
+      CurvedAnimation(parent: _scanAnimController, curve: Curves.easeInOut),
+    );
   }
 
   Future<void> _initCamera() async {
@@ -67,7 +75,7 @@ class _PunchViewState extends State<_PunchView> {
           (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => cameras.first,
     );
-    _camera = CameraController(cam, ResolutionPreset.medium, enableAudio: false);
+    _camera = CameraController(cam, ResolutionPreset.high, enableAudio: false);
     await _camera!.initialize();
     if (mounted) setState(() => _cameraReady = true);
   }
@@ -75,13 +83,12 @@ class _PunchViewState extends State<_PunchView> {
   @override
   void dispose() {
     _camera?.dispose();
+    _scanAnimController.dispose();
     _empCodeCtrl.dispose();
     _passwordCtrl.dispose();
     _clientCodeCtrl.dispose();
     _empCodeFocus.dispose();
     _passwordFocus.dispose();
-    _submitFocus.dispose();
-    _clearFocus.dispose();
     _clientCodeFocus.dispose();
     super.dispose();
   }
@@ -90,44 +97,53 @@ class _PunchViewState extends State<_PunchView> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: _surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: _glassBorder, width: 0.5),
+        ),
         title: Text(
           isError ? 'Alert' : 'Success',
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w700,
-            fontSize: 18,
-            color: _textPrimary,
+            fontSize: 16,
+            color: _textWhite,
           ),
         ),
         content: Text(
           message,
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            color: _textSecondary,
+            fontSize: 13,
+            color: Colors.white70,
             height: 1.5,
           ),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
-          FilledButton(
-            autofocus: true,
-            style: FilledButton.styleFrom(
-              backgroundColor: isError ? _errorColor : _primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
+          GestureDetector(
+            onTap: () {
               Navigator.pop(context);
               _empCodeFocus.requestFocus();
             },
-            child: Text(
-              'OK',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: isError
+                    ? null
+                    : const LinearGradient(colors: [_accent1, _accent2]),
+                color: isError ? Colors.redAccent.withOpacity(0.8) : null,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'OK',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],
@@ -183,9 +199,10 @@ class _PunchViewState extends State<_PunchView> {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: _background,
+          backgroundColor: _bgDark,
           body: Stack(
             children: [
+              _buildBackgroundLayer(),
               Column(
                 children: [
                   _buildHeader(),
@@ -201,96 +218,181 @@ class _PunchViewState extends State<_PunchView> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      color: _primary,
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  DateFormat('dd MMM yyyy').format(DateTime.now()),
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+  Widget _buildBackgroundLayer() {
+    return Stack(
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/tech_bg.jpg'),
+              fit: BoxFit.cover,
+              opacity: 0.35,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: const [0.0, 0.3, 0.7, 1.0],
+              colors: [
+                Color(0xFF020617).withOpacity(0.85),
+                Color(0xFF0F172A).withOpacity(0.75),
+                Color(0xFF172554).withOpacity(0.65),
+                Color(0xFF020617).withOpacity(0.9),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          top: -120,
+          left: -80,
+          child: Container(
+            width: 420,
+            height: 420,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [_accent1.withOpacity(0.12), Colors.transparent],
+                stops: const [0.0, 0.75],
               ),
             ),
           ),
+        ),
+        Positioned(
+          bottom: -80,
+          right: -60,
+          child: Container(
+            width: 380,
+            height: 380,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [_accent3.withOpacity(0.11), Colors.transparent],
+                stops: const [0.0, 0.75],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: MediaQuery.of(context).size.height * 0.38,
+          left: MediaQuery.of(context).size.width * 0.48,
+          child: Container(
+            width: 320,
+            height: 320,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [_accent2.withOpacity(0.10), Colors.transparent],
+                stops: const [0.0, 0.75],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLiquidGlass({required Widget child, EdgeInsetsGeometry? padding, double borderRadius = 24}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: _glassBg,
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(color: _glassBorder, width: 0.8),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0AFFFFFF),
+                blurRadius: 20,
+                spreadRadius: 1,
+                blurStyle: BlurStyle.inner,
+              ),
+              BoxShadow(
+                color: Color(0x08FFFFFF),
+                offset: Offset(0, 2),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return _buildLiquidGlass(
+      borderRadius: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
           Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'CAROL SOLUTIONS',
+                'ZAC Tech Solutions',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: 1.5,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: _textWhite,
+                  letterSpacing: 0.3,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 '1st Floor, Thapasya Building, Infopark Campus, Kakkanad, Kerala 682042',
                 style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white70,
                   fontSize: 11,
+                  color: _textMuted,
                 ),
               ),
             ],
           ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  StreamBuilder(
-                    stream: Stream.periodic(const Duration(seconds: 1)),
-                    builder: (_, __) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        DateFormat('hh:mm:ss a').format(DateTime.now()),
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Tooltip(
-                    message: 'Admin Login',
-                    child: InkWell(
-                      onTap: () => context.go('/admin'),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.admin_panel_settings_outlined,
-                            color: Colors.white, size: 22),
-                      ),
-                    ),
-                  ),
-                ],
+          Row(
+            children: [
+              _buildHeaderPill(Icons.calendar_today_outlined, DateFormat('dd MMM yyyy').format(DateTime.now())),
+              const SizedBox(width: 8),
+              StreamBuilder(
+                stream: Stream.periodic(const Duration(seconds: 1)),
+                builder: (_, __) => _buildHeaderPill(Icons.access_time, DateFormat('hh:mm a').format(DateTime.now())),
               ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => context.go('/admin'),
+                child: _buildHeaderPill(Icons.admin_panel_settings_outlined, "Admin"),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderPill(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0x0AFFFFFF),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0x1AFFFFFF), width: 0.5),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.white70),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -301,45 +403,22 @@ class _PunchViewState extends State<_PunchView> {
   Widget _buildBody(PunchState state) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'PUNCHING PORTAL',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: _textPrimary,
-                letterSpacing: 1,
-              ),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.60,
+          child: _buildLiquidGlass(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 300,
+                  child: _buildForm(state),
+                ),
+                const SizedBox(width: 30),
+                _buildCameraPanel(),
+              ],
             ),
-            const SizedBox(height: 28),
-            Container(
-              width: 860,
-              padding: const EdgeInsets.all(36),
-              decoration: BoxDecoration(
-                color: _surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _borderColor),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0A000000),
-                    blurRadius: 20,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 6, child: _buildForm(state)),
-                  const SizedBox(width: 36),
-                  Expanded(flex: 4, child: _buildCameraPanel()),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -350,108 +429,117 @@ class _PunchViewState extends State<_PunchView> {
       policy: OrderedTraversalPolicy(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 24),
-          FocusTraversalOrder(
-            order: const NumericFocusOrder(1),
-            child: TextField(
-              controller: _empCodeCtrl,
-              focusNode: _empCodeFocus,
-              textInputAction: TextInputAction.next,
-              onSubmitted: (_) => _passwordFocus.requestFocus(),
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _textPrimary),
-              decoration: _inputDecoration('Employee Code', Icons.badge_outlined),
-            ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0x0AFFFFFF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _glassBorder, width: 0.5),
+                ),
+                child: const Icon(Icons.fingerprint, color: _accent1, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Punching Portal', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600, color: _textWhite)),
+                  Text('Attendance management', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: _textMuted)),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          FocusTraversalOrder(
-            order: const NumericFocusOrder(2),
-            child: TextField(
-              controller: _passwordCtrl,
-              focusNode: _passwordFocus,
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) {
-                _submitFocus.requestFocus();
-                if (state is! PunchLoading) _submitPunch();
-              },
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _textPrimary),
-              decoration: _inputDecoration('Password', Icons.lock_outline_rounded),
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
+          _buildInputGroup('Employee code', Icons.badge_outlined, _empCodeCtrl, _empCodeFocus, false, TextInputAction.next),
+          const SizedBox(height: 18),
+          _buildInputGroup('Password', Icons.lock_outline, _passwordCtrl, _passwordFocus, true, TextInputAction.done),
+          const SizedBox(height: 12),
+          const Divider(color: Color(0x14FFFFFF), thickness: 0.5, height: 32),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            margin: const EdgeInsets.only(bottom: 28),
             decoration: BoxDecoration(
-              color: _primaryLight,
+              color: _accent2.withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _primaryBorder),
+              border: Border.all(color: _accent2.withOpacity(0.2), width: 0.5),
             ),
             child: Row(
               children: [
-                const Icon(Icons.schedule_rounded, color: _primary, size: 18),
-                const SizedBox(width: 10),
-                Text(
-                  'Shift: NORMAL-2  ·  09:30 – 18:30',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _primary,
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: _neonIndicator,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: _neonIndicator, blurRadius: 6)],
                   ),
                 ),
+                const SizedBox(width: 10),
+                Text('Shift', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: _textMuted)),
+                const SizedBox(width: 8),
+                Text('NORMAL-2 · 09:30 – 18:30', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFFE0F2FE))),
               ],
             ),
           ),
-          const SizedBox(height: 28),
           Row(
             children: [
               Expanded(
-                child: FocusTraversalOrder(
-                  order: const NumericFocusOrder(3),
-                  child: FilledButton.icon(
-                    focusNode: _submitFocus,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                flex: 5,
+                child: GestureDetector(
+                  onTap: state is PunchLoading ? null : _submitPunch,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [_accent1, _accent2, _accent3],
+                        stops: [0.0, 0.5, 1.0],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [BoxShadow(color: Color(0x33FFFFFF), blurRadius: 12, spreadRadius: 1)],
                     ),
-                    onPressed: state is PunchLoading ? null : _submitPunch,
-                    icon: state is PunchLoading
-                        ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                        : const Icon(Icons.fingerprint_rounded, size: 18),
-                    label: Text(
-                      'Submit Punch',
-                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
+                    alignment: Alignment.center,
+                    child: state is PunchLoading
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.fingerprint, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text('Submit punch', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                      ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: FocusTraversalOrder(
-                  order: const NumericFocusOrder(4),
-                  child: OutlinedButton.icon(
-                    focusNode: _clearFocus,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: _borderColor, width: 1.5),
-                      foregroundColor: _textSecondary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                flex: 3,
+                child: GestureDetector(
+                  onTap: () {
+                    _empCodeCtrl.clear();
+                    _passwordCtrl.clear();
+                    _empCodeFocus.requestFocus();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0x0AFFFFFF),
+                      border: Border.all(color: const Color(0x1AFFFFFF), width: 0.5),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    onPressed: () {
-                      _empCodeCtrl.clear();
-                      _passwordCtrl.clear();
-                      _empCodeFocus.requestFocus();
-                    },
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: Text(
-                      'Clear / Reject',
-                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 13),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.refresh, color: Colors.white70, size: 16),
+                        const SizedBox(width: 6),
+                        Text('Clear', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white70)),
+                      ],
                     ),
                   ),
                 ),
@@ -463,165 +551,202 @@ class _PunchViewState extends State<_PunchView> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: _textSecondary),
-      prefixIcon: Icon(icon, color: _primary, size: 20),
-      filled: true,
-      fillColor: const Color(0xFFF8FAFC),
-      contentPadding: const EdgeInsets.symmetric(vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _borderColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _borderColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _primary, width: 1.8),
-      ),
-    );
-  }
-
-  Widget _buildCameraPanel() {
+  Widget _buildInputGroup(String label, IconData icon, TextEditingController controller, FocusNode focusNode, bool isPassword, TextInputAction action) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            height: 260,
-            color: const Color(0xFF0F172A),
-            child: _cameraReady
-                ? CameraPreview(_camera!)
-                : const Center(
-              child: CircularProgressIndicator(color: _primary, strokeWidth: 2),
-            ),
-          ),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0x80FFFFFF), letterSpacing: 0.5, fontWeight: FontWeight.w500),
         ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: _cameraReady ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              _cameraReady ? 'Camera ready' : 'Initialising camera…',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                color: _textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          obscureText: isPassword,
+          textInputAction: action,
+          onSubmitted: (_) {
+            if (action == TextInputAction.next) {
+              _passwordFocus.requestFocus();
+            } else {
+              _submitPunch();
+            }
+          },
+          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _textWhite),
+          decoration: InputDecoration(
+            hintText: isPassword ? '••••••••' : 'Enter your code',
+            hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: const Color(0x40FFFFFF)),
+            prefixIcon: Icon(icon, color: const Color(0x88FFFFFF), size: 20),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.08),        // White background for text field
+            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0x1AFFFFFF), width: 0.5)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0x1AFFFFFF), width: 0.5)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _accent1, width: 1.6)),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildServerConfigOverlay() {
-    return Container(
-      color: Colors.black.withOpacity(0.4),
-      child: Center(
-        child: Container(
-          width: 440,
-          padding: const EdgeInsets.all(40),
-          decoration: BoxDecoration(
-            color: _surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _borderColor),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x18000000),
-                blurRadius: 32,
-                offset: Offset(0, 12),
+  Widget _buildCameraPanel() {
+    return SizedBox(
+      width: 380,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.camera_alt_outlined, size: 14, color: _textMuted),
+                  const SizedBox(width: 6),
+                  Text('Face scan', style: GoogleFonts.plusJakartaSans(fontSize: 12, color: _textMuted, fontWeight: FontWeight.w500)),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: _cameraReady ? _neonIndicator : Colors.amber,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: _cameraReady ? _neonIndicator : Colors.amber, blurRadius: 4)],
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    _cameraReady ? 'Live' : 'Starting...',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0x80FFFFFF)),
+                  ),
+                ],
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: _primaryLight,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _primaryBorder),
+          const SizedBox(height: 14),
+          Container(
+            height: 340,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A).withOpacity(0.6),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0x1AFFFFFF), width: 1),
+              boxShadow: const [BoxShadow(color: Color(0x0AFFFFFF), blurRadius: 16, spreadRadius: 2)],
+            ),
+            child: Stack(
+              children: [
+                if (_cameraReady && _camera != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: SizedBox.expand(child: CameraPreview(_camera!)),
+                  )
+                else
+                  const Center(child: Icon(Icons.face, size: 42, color: Color(0x1AFFFFFF))),
+
+                _buildCorner(top: 16, left: 16, topBorder: true, leftBorder: true),
+                _buildCorner(top: 16, right: 16, topBorder: true, rightBorder: true),
+                _buildCorner(bottom: 16, left: 16, bottomBorder: true, leftBorder: true),
+                _buildCorner(bottom: 16, right: 16, bottomBorder: true, rightBorder: true),
+
+                AnimatedBuilder(
+                  animation: _scanAnimation,
+                  builder: (context, child) {
+                    return Positioned(
+                      top: 340 * _scanAnimation.value,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 2,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.transparent, _accent1.withOpacity(0.9), _accent3.withOpacity(0.9), Colors.transparent],
+                          ),
+                          boxShadow: [BoxShadow(color: _accent1.withOpacity(0.6), blurRadius: 12, spreadRadius: 2)],
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                child: const Icon(Icons.cloud_sync_outlined, color: _primary, size: 28),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Server Configuration',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: _textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Enter your client code to connect to the server',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: _textSecondary,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Client Code',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _textPrimary,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCorner({double? top, double? bottom, double? left, double? right, bool topBorder = false, bool bottomBorder = false, bool leftBorder = false, bool rightBorder = false}) {
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          border: Border(
+            top: topBorder ? const BorderSide(color: _accent1, width: 2.5) : BorderSide.none,
+            bottom: bottomBorder ? const BorderSide(color: _accent1, width: 2.5) : BorderSide.none,
+            left: leftBorder ? const BorderSide(color: _accent1, width: 2.5) : BorderSide.none,
+            right: rightBorder ? const BorderSide(color: _accent1, width: 2.5) : BorderSide.none,
+          ),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(topBorder && leftBorder ? 6 : 0),
+            topRight: Radius.circular(topBorder && rightBorder ? 6 : 0),
+            bottomLeft: Radius.circular(bottomBorder && leftBorder ? 6 : 0),
+            bottomRight: Radius.circular(bottomBorder && rightBorder ? 6 : 0),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServerConfigOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.75),
+      child: Center(
+        child: _buildLiquidGlass(
+          padding: const EdgeInsets.all(40),
+          child: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0x0AFFFFFF),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _glassBorder),
                   ),
+                  child: const Icon(Icons.cloud_sync_outlined, color: _accent1, size: 28),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _clientCodeCtrl,
-                focusNode: _clientCodeFocus,
-                autofocus: true,
-                onSubmitted: (_) => _connectToServer(),
-                style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _textPrimary),
-                decoration: _inputDecoration('e.g. XYZ', Icons.dns_outlined),
-              ),
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: _connectToServer,
-                  child: Text(
-                    'Connect to Server',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+                const SizedBox(height: 20),
+                Text('Server Configuration', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: _textWhite)),
+                const SizedBox(height: 6),
+                Text('Enter your client code to connect', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: _textMuted)),
+                const SizedBox(height: 28),
+                _buildInputGroup('Client Code', Icons.dns_outlined, _clientCodeCtrl, _clientCodeFocus, false, TextInputAction.done),
+                const SizedBox(height: 28),
+                GestureDetector(
+                  onTap: _connectToServer,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [_accent1, _accent2]),
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    alignment: Alignment.center,
+                    child: Text('Connect to Server', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13)),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -629,17 +754,15 @@ class _PunchViewState extends State<_PunchView> {
   }
 
   Widget _buildFooter() {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      color: _primary,
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Text(
-        'Designed & Developed by Vineeth Venu',
-        textAlign: TextAlign.center,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 11,
-          color: Colors.white70,
-          fontWeight: FontWeight.w500,
+      child: _buildLiquidGlass(
+        borderRadius: 0,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Text(
+          'Designed & developed by Vineeth Venu',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0x40FFFFFF)),
         ),
       ),
     );
